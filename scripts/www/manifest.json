@@ -1,0 +1,35 @@
+{
+    "name": "ToDo待办",
+    "appid": "__uni__todo001",
+    "description": "治愈系待办应用 - 记录每一天的成就",
+    "versionName": "1.0.0",
+    "versionCode": "100",
+    "transformPx": false,
+    "app-plus": {
+        "splashscreen": {
+            "alwaysShowBeforeRender": true,
+            "waiting": true,
+            "autoclose": true,
+            "delay": 0
+        },
+        "distribute": {
+            "android": {
+                "permissions": [
+                    "<uses-permission android:name=\"android.permission.INTERNET\"/>",
+                    "<uses-permission android:name=\"android.permission.VIBRATE\"/>"
+                ],
+                "minSdkVersion": 21
+            }
+        },
+        "screenOrientation": [
+            "portrait-primary"
+        ],
+        "softinputMode": "adjustResize"
+    },
+    "h5": {
+        "router": {
+            "mode": "hash",
+            "base": "./"
+        }
+    }
+}
