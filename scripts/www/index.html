@@ -1,11 +1,2485 @@
 <!DOCTYPE html>
-<html lang="en">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>PakePlus</title>
-    </head>
-    <body>
-        PakePlus
-    </body>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Do</title>
+    <script src="js/tailwind.min.js"></script>
+    <link rel="stylesheet" href="css/all.min.css">
+    <script src="js/Sortable.min.js"></script>
+    <style>
+        :root {
+            --coloros-bg: #F7F8FA;
+            --coloros-primary: #0062FF;
+            --coloros-success: #25C78B;
+            --coloros-card-bg: #FFFFFF;
+            --safe-area-top: max(env(safe-area-inset-top), 44px);
+            --safe-area-bottom: env(safe-area-inset-bottom);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--coloros-bg);
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            color: #1D1D1F;
+            position: fixed;
+            overscroll-behavior: none;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        input, textarea {
+            -webkit-user-select: text;
+            user-select: text;
+        }
+
+        .app-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background: rgba(247, 248, 250, 0.95);
+            backdrop-filter: blur(20px);
+            padding: var(--safe-area-top) 20px 16px;
+            z-index: 100;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.05);
+            transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease;
+        }
+
+        .app-header.hidden {
+            transform: translateY(-120%);
+            opacity: 0;
+        }
+
+        .app-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 16px;
+            padding-top: calc(var(--safe-area-top) + 70px);
+            padding-bottom: calc(100px + var(--safe-area-bottom));
+            -webkit-overflow-scrolling: touch;
+        }
+
+        .app-content::-webkit-scrollbar {
+            width: 0;
+        }
+
+        .task-card {
+            background: transparent;
+            border-radius: 24px;
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .swipe-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #FF4D4F;
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            padding-left: 24px;
+            color: white;
+            font-size: 20px;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 1;
+        }
+
+        .task-card-content {
+            background: var(--coloros-card-bg);
+            padding: 20px;
+            border-radius: 24px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.04);
+            position: relative;
+            z-index: 2;
+            transition: transform 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+            border: 1px solid rgba(0, 0, 0, 0.02);
+            touch-action: pan-y;
+        }
+
+        .task-card-content.no-transition {
+            transition: none !important;
+        }
+
+        .sortable-ghost {
+            opacity: 0.4;
+            background: #F2F2F7 !important;
+            border: 2px dashed #0062FF;
+        }
+
+        .sortable-chosen {
+            transform: scale(1.02);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1) !important;
+        }
+
+        .task-card-content.todo { border-left: 5px solid var(--coloros-primary); }
+        .task-card-content.do-item { border-left: 5px solid var(--coloros-success); }
+        
+        .task-card-content.done-grey { 
+            opacity: 0.6; 
+            background: #F2F2F2;
+            box-shadow: none;
+        }
+        .task-card-content.done-grey .task-text { 
+            text-decoration: line-through; 
+            color: #86868B; 
+        }
+
+        .task-card.dragging .task-card-content {
+            opacity: 0.4;
+            background: #EBEBEB !important;
+        }
+
+        .task-text {
+            word-break: break-all;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+            overflow: hidden;
+            display: -webkit-box;
+            display: box;
+            -webkit-line-clamp: 3;
+            line-clamp: 3;
+            -webkit-box-orient: vertical;
+            box-orient: vertical;
+            line-height: 1.5;
+            font-size: 17px;
+        }
+
+        .empty-state {
+            display: flex; 
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding-top: 100px;
+            opacity: 0.2;
+        }
+        .empty-state i { font-size: 64px; margin-bottom: 16px; }
+        .empty-state span { font-size: 16px; font-weight: 500; }
+
+        .finished-separator {
+            display: flex;
+            align-items: center;
+            margin: 32px 0 16px;
+            color: #86868B;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .finished-separator::before,
+        .finished-separator::after {
+            content: "";
+            flex: 1;
+            height: 1.5px;
+            background: #EBEBEB;
+        }
+
+        .finished-separator span {
+            padding: 0 16px;
+        }
+
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            height: calc(56px + var(--safe-area-bottom));
+            background: rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(25px) saturate(180%);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding-bottom: var(--safe-area-bottom);
+            border-top: 0.5px solid rgba(0, 0, 0, 0.03);
+            z-index: 100;
+            transition: transform 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.35s ease;
+        }
+
+        .bottom-nav.hidden {
+            transform: translateY(120%);
+            opacity: 0;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #86868B;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            width: 45%;
+            height: 100%;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .nav-item.active {
+            color: var(--coloros-primary);
+        }
+        
+        #nav-do i,
+        #nav-do span {
+            color: #86868B;
+        }
+        
+        #nav-do.active i,
+        #nav-do.active span {
+            color: #25C78B;
+        }
+
+        .nav-item i {
+            font-size: 22px;
+            margin-bottom: 2px;
+        }
+
+        .nav-item span {
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        #addModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 200;
+            backdrop-filter: blur(15px);
+            justify-content: center;
+            align-items: flex-end;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .modal-content {
+            background: #FFFFFF;
+            width: 100%;
+            border-radius: 36px 36px 0 0;
+            padding: 24px;
+            padding-bottom: calc(30px + var(--safe-area-bottom));
+            box-shadow: 0 -10px 40px rgba(0,0,0,0.08);
+            animation: colorosSheetUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            max-height: 95vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .modal-body {
+            flex: 1;
+            overflow-y: auto;
+            margin-bottom: 24px;
+        }
+        
+        .modal-footer {
+            position: sticky;
+            bottom: 0;
+            background: #FFFFFF;
+            padding-top: 16px;
+            border-top: 1px solid rgba(0,0,0,0.05);
+        }
+
+        @keyframes colorosSheetUp {
+            from { transform: translateY(100%); opacity: 0.5; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .input-group {
+            margin-bottom: 24px;
+            position: relative;
+        }
+
+        .input-label {
+            font-size: 14px;
+            font-weight: 700;
+            color: #86868B;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .input-label .shortcut {
+            color: var(--coloros-primary);
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(0, 98, 255, 0.08);
+            padding: 4px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        textarea, input[type="text"] {
+            -webkit-appearance: none;
+            appearance: none;
+            border: 2px solid #F2F2F7;
+            background: #F7F7F9;
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            padding: 16px 18px;
+            border-radius: 18px;
+            font-size: 17px;
+            font-weight: 500;
+            width: 100%;
+            outline: none;
+            color: #1D1D1F;
+            box-sizing: border-box;
+        }
+
+        textarea {
+            resize: none;
+            min-height: 120px;
+            line-height: 1.6;
+        }
+
+        textarea:focus, input[type="text"]:focus {
+            border-color: var(--coloros-primary);
+            background: #FFFFFF;
+            box-shadow: 0 0 0 4px rgba(0, 98, 255, 0.05);
+        }
+
+        .btn-confirm {
+            background: var(--coloros-primary);
+            color: white;
+            box-shadow: 0 12px 24px rgba(0, 98, 255, 0.2);
+        }
+
+        .btn-cancel {
+            background: #F2F2F7;
+            color: #86868B;
+        }
+
+        .modal-header-line {
+            width: 40px;
+            height: 5px;
+            background: #E5E5EA;
+            border-radius: 10px;
+            margin: 0 auto 24px;
+        }
+
+        .fab {
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s;
+            border: none;
+            cursor: pointer;
+        }
+        .fab:active { 
+            transform: scale(0.9); 
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .image-upload-btn {
+            width: 36px;
+            height: 36px;
+            background: #F2F2F7;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #86868B;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .image-upload-btn:active { transform: scale(0.9); background: #E5E5EA; }
+
+        .modal-image-preview-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-bottom: 24px;
+            display: none;
+        }
+        .modal-image-preview {
+            width: 64px;
+            height: 64px;
+            border-radius: 14px;
+            overflow: visible;
+            position: relative;
+            border: 1px solid rgba(0,0,0,0.05);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+        .modal-image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 14px;
+        }
+        .remove-img-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 22px;
+            height: 22px;
+            background: #FF4D4F;
+            border: 2px solid #FFFFFF;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            border-radius: 50%;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            z-index: 10;
+            cursor: pointer;
+        }
+
+        .task-images-container {
+            display: flex;
+            gap: 6px;
+            margin-right: 8px;
+            flex-shrink: 0;
+            max-width: 150px;
+            overflow-x: auto;
+        }
+        .task-images-container::-webkit-scrollbar { display: none; }
+
+        .task-card-img {
+            width: 44px;
+            height: 44px;
+            border-radius: 10px;
+            object-fit: cover;
+            flex-shrink: 0;
+            border: 1px solid rgba(0,0,0,0.05);
+            cursor: pointer;
+            background: #F2F2F7;
+            transition: opacity 0.3s ease;
+        }
+
+        .task-card-img.lazy-loading {
+            opacity: 0.5;
+        }
+
+        .task-card-img.lazy-loaded {
+            opacity: 1;
+        }
+
+        .task-card-img.lazy-error {
+            opacity: 0.3;
+            background: #FFEAEA;
+        }
+
+        .image-viewer-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 1000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .image-viewer-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .image-viewer-img {
+            max-width: 95%;
+            max-height: 85%;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        .image-viewer-overlay.active .image-viewer-img {
+            transform: scale(1);
+        }
+
+        .close-viewer-btn {
+            position: absolute;
+            top: max(env(safe-area-inset-top), 20px);
+            right: 20px;
+            width: 44px;
+            height: 44px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+        }
+
+        .delete-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            z-index: 500;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .delete-modal-overlay.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .delete-modal-content {
+            background: #FFFFFF;
+            width: 85%;
+            max-width: 320px;
+            border-radius: 32px;
+            padding: 32px 24px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            transform: scale(0.85);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-align: center;
+        }
+
+        .delete-modal-overlay.active .delete-modal-content {
+            transform: scale(1);
+        }
+
+        .delete-icon-wrapper {
+            width: 64px;
+            height: 64px;
+            background: rgba(255, 77, 79, 0.1);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 20px;
+            color: #FF4D4F;
+            font-size: 28px;
+        }
+
+        /* 加载动画 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: var(--coloros-bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            transition: opacity 0.3s ease;
+        }
+        .loading-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .loading-spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #F2F2F7;
+            border-top-color: var(--coloros-primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .loading-text {
+            margin-top: 16px;
+            color: #86868B;
+            font-size: 14px;
+        }
+
+        /* 导入导出模态框样式 */
+        #importExportModal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.3);
+            z-index: 300;
+            backdrop-filter: blur(15px);
+            justify-content: flex-start;
+            align-items: center;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 60px 0;
+            opacity: 0;
+            transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        #importExportModal.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .import-export-content {
+            background: #FFFFFF;
+            width: 90%;
+            max-width: 400px;
+            border-radius: 32px;
+            padding: 24px 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+            transform: scale(0.85);
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            text-align: center;
+        }
+
+        #importExportModal.active .import-export-content {
+            transform: scale(1);
+        }
+
+        .import-export-icon {
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, #0062FF 0%, #25C78B 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            color: white;
+            font-size: 24px;
+        }
+
+        .import-export-card {
+            background: #F7F8FA;
+            border-radius: 16px;
+            padding: 14px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 2px solid transparent;
+            display: block;
+            text-align: center;
+            position: relative;
+        }
+
+        .import-export-card:active {
+            transform: scale(0.98);
+        }
+
+        .import-export-card:hover {
+            border-color: var(--coloros-primary);
+            background: #F0F4FF;
+        }
+
+        .import-export-card.import:hover {
+            border-color: var(--coloros-success);
+            background: #E8F8F2;
+        }
+
+        .import-export-card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 8px;
+            font-size: 18px;
+        }
+
+        .import-export-card.export .import-export-card-icon {
+            background: rgba(0, 98, 255, 0.1);
+            color: var(--coloros-primary);
+        }
+
+        .import-export-card.import .import-export-card-icon {
+            background: rgba(37, 199, 139, 0.1);
+            color: var(--coloros-success);
+        }
+
+        .import-export-card-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1D1D1F;
+            margin-bottom: 2px;
+        }
+
+        .import-export-card-desc {
+            font-size: 12px;
+            color: #86868B;
+        }
+
+        .stats-info {
+            background: #F2F2F7;
+            border-radius: 14px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+        }
+
+        .stats-row:not(:last-child) {
+            border-bottom: 1px solid #E5E5EA;
+        }
+
+        .stats-label {
+            color: #86868B;
+            font-size: 13px;
+        }
+
+        .stats-value {
+            color: #1D1D1F;
+            font-weight: 600;
+            font-size: 13px;
+        }
+
+        /* 设置区域样式 */
+        .settings-section {
+            margin-bottom: 12px;
+        }
+
+        .settings-toggle-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            background: #F2F2F7;
+            border-radius: 14px;
+        }
+
+        .settings-toggle-info {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 2px;
+        }
+
+        .settings-toggle-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1D1D1F;
+        }
+
+        .settings-toggle-desc {
+            font-size: 12px;
+            color: #86868B;
+        }
+
+        .settings-toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 26px;
+            flex-shrink: 0;
+        }
+
+        .settings-toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .settings-toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #E5E5EA;
+            transition: 0.3s;
+            border-radius: 26px;
+        }
+
+        .settings-toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 22px;
+            width: 22px;
+            left: 2px;
+            bottom: 2px;
+            background-color: white;
+            transition: 0.3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+
+        .settings-toggle-switch input:checked + .settings-toggle-slider {
+            background-color: var(--coloros-primary);
+        }
+
+        .settings-toggle-switch input:checked + .settings-toggle-slider:before {
+            transform: translateX(18px);
+        }
+
+        .settings-divider {
+            height: 1px;
+            background: #E5E5EA;
+            margin: 12px 0;
+        }
+
+        /* 标题可点击提示 */
+        .app-header h1 {
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .app-header h1:active {
+            opacity: 0.7;
+        }
+
+        @keyframes toastFadeIn {
+            from { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+            to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        }
+
+        @keyframes toastFadeOut {
+            from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+            to { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 加载动画 -->
+    <div id="loadingOverlay" class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">正在加载数据...</div>
+    </div>
+
+    <!-- App Header - Do View -->
+    <div id="header-do" class="app-header">
+        <h1 class="text-4xl font-bold tracking-tight">Do</h1>
+        <button onclick="showAddModal('do')" class="fab bg-[#25C78B] text-white">
+            <i class="fas fa-plus text-2xl"></i>
+        </button>
+    </div>
+
+    <!-- App Header - To Do View -->
+    <div id="header-todo" class="app-header hidden">
+        <h1 class="text-4xl font-bold tracking-tight">To Do</h1>
+        <button onclick="showAddModal('todo')" class="fab bg-[#0062FF] text-white">
+            <i class="fas fa-plus text-2xl"></i>
+        </button>
+    </div>
+
+    <!-- App Content Sections -->
+    <div id="view-do" class="app-content">
+        <div id="done-list">
+        </div>
+    </div>
+
+    <div id="view-todo" class="app-content hidden">
+        <div id="todo-list">
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <div class="bottom-nav">
+        <div class="nav-item" id="nav-do" onclick="switchTab('do')">
+            <i class="fas fa-check-circle"></i>
+            <span>Do</span>
+        </div>
+        <div class="nav-item" id="nav-todo" onclick="switchTab('todo')">
+            <i class="fas fa-list-ul"></i>
+            <span>To Do</span>
+        </div>
+    </div>
+
+    <!-- Add Task Modal -->
+    <div id="addModal" onclick="if(event.target==this) requestCloseAddModal()">
+        <div class="modal-content">
+            <div class="modal-header-line"></div>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold" id="modalTitle">编辑事项</h2>
+                <label for="imageInput" class="image-upload-btn">
+                    <i class="fas fa-image"></i>
+                </label>
+                <input type="file" id="imageInput" accept="image/*" class="hidden" multiple onchange="handleImageUpload(this)">
+            </div>
+            
+            <div class="modal-body">
+                <div class="input-group">
+                    <label class="input-label">任务内容</label>
+                    <textarea id="taskInput" placeholder="在此输入内容..."></textarea>
+                </div>
+
+                <div id="imagePreviewContainer" class="modal-image-preview-container">
+                </div>
+
+                <div class="input-group">
+                    <label class="input-label">
+                        <span>日期与时间</span>
+                        <span class="shortcut" onclick="document.getElementById('taskTimeInput').value = getFormattedTime()">设为当前</span>
+                    </label>
+                    <input type="text" id="taskTimeInput" placeholder="年/月/日星期HH:mm" oninput="debouncedAutoUpdateWeekday(this)">
+                </div>
+            </div>
+
+            <div class="modal-footer">
+                <div class="flex gap-4">
+                    <button onclick="hideAddModalInternal()" class="btn-cancel flex-1 p-5 rounded-2xl font-bold active:scale-95 transition-all">取消</button>
+                    <button onclick="addTask()" id="confirmBtn" class="btn-confirm flex-1 p-5 rounded-2xl font-bold active:scale-95 transition-all">确认</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="delete-modal-overlay" onclick="if(event.target==this) requestCloseDeleteModal()">
+        <div class="delete-modal-content">
+            <div class="delete-icon-wrapper">
+                <i class="fas fa-trash-alt"></i>
+            </div>
+            <h3 class="text-xl font-bold text-[#1D1D1F] mb-2">确认删除</h3>
+            <p class="text-[#86868B] text-sm mb-8 leading-relaxed">删除后将无法找回该事项，<br>确定要执行此操作吗？</p>
+            <div class="flex flex-col gap-3">
+                <button id="confirmDeleteBtn" class="w-full p-4 bg-[#FF4D4F] text-white rounded-2xl font-bold active:scale-95 transition-all">删除</button>
+                <button onclick="requestCloseDeleteModal()" class="w-full p-4 bg-[#F2F2F7] text-[#86868B] rounded-2xl font-bold active:scale-95 transition-all">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Full Image Viewer -->
+    <div id="imageViewer" class="image-viewer-overlay" onclick="requestCloseImageViewer()">
+        <div class="close-viewer-btn">
+            <i class="fas fa-times"></i>
+        </div>
+        <img id="fullImage" class="image-viewer-img" src="" alt="">
+    </div>
+
+    <!-- 设置 Modal -->
+    <div id="importExportModal" onclick="if(event.target==this) requestCloseImportExportModal()">
+        <div class="import-export-content">
+            <h3 class="text-xl font-bold text-[#1D1D1F] mb-4">设置</h3>
+            
+            <!-- 导航栏滚动隐藏开关 -->
+            <div class="settings-section">
+                <div class="settings-toggle-row">
+                    <div class="settings-toggle-info">
+                        <span class="settings-toggle-title">导航栏滚动隐藏</span>
+                        <span class="settings-toggle-desc">滚动时自动隐藏上下导航栏</span>
+                    </div>
+                    <label class="settings-toggle-switch">
+                        <input type="checkbox" id="scrollHideToggle" onchange="toggleScrollHide(this.checked)">
+                        <span class="settings-toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+            
+            <div class="settings-divider"></div>
+            
+            <div class="stats-info">
+                <div class="stats-row">
+                    <span class="stats-label">待办事项</span>
+                    <span class="stats-value" id="statsTodoCount">0</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stats-label">已完成</span>
+                    <span class="stats-value" id="statsDoCount">0</span>
+                </div>
+                <div class="stats-row">
+                    <span class="stats-label">图片数量</span>
+                    <span class="stats-value" id="statsImageCount">0</span>
+                </div>
+            </div>
+
+            <div class="import-export-card export" onclick="exportData()">
+                <div class="import-export-card-icon">
+                    <i class="fas fa-download"></i>
+                </div>
+                <div class="import-export-card-title">导出数据</div>
+                <div class="import-export-card-desc">将所有数据导出为 JSON 文件</div>
+            </div>
+
+            <div class="import-export-card import" id="importCard">
+                <div class="import-export-card-icon">
+                    <i class="fas fa-upload"></i>
+                </div>
+                <div class="import-export-card-title">导入数据</div>
+                <div class="import-export-card-desc">从 JSON 文件恢复数据</div>
+            </div>
+            <input type="file" id="importFileInput" accept=".json,application/json,*/*.json" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;">
+
+            <button onclick="requestCloseImportExportModal()" class="w-full p-3 bg-[#F2F2F7] text-[#86868B] rounded-xl font-bold active:scale-95 transition-all mt-2">关闭</button>
+        </div>
+    </div>
+
+    <!-- Import Confirm Modal -->
+    <div id="importConfirmModal" class="delete-modal-overlay" onclick="if(event.target==this) requestCloseImportConfirmModal()">
+        <div class="delete-modal-content">
+            <div class="delete-icon-wrapper" style="background: rgba(37, 199, 139, 0.1); color: #25C78B;">
+                <i class="fas fa-upload"></i>
+            </div>
+            <h3 class="text-xl font-bold text-[#1D1D1F] mb-2">选择导入方式</h3>
+            <p class="text-[#86868B] text-sm mb-6 leading-relaxed">检测到 <span id="importCount" class="font-bold text-[#1D1D1F]">0</span> 条数据</p>
+            <div class="flex flex-col gap-3">
+                <button id="overwriteImportBtn" class="w-full p-4 bg-[#FF4D4F] text-white rounded-2xl font-bold active:scale-95 transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>覆盖导入</span>
+                </button>
+                <button id="mergeImportBtn" class="w-full p-4 bg-[#25C78B] text-white rounded-2xl font-bold active:scale-95 transition-all flex items-center justify-center gap-2">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>添加导入</span>
+                </button>
+                <div class="text-xs text-[#86868B] px-2 text-center">
+                    添加导入将跳过已存在的数据
+                </div>
+                <button onclick="requestCloseImportConfirmModal()" class="w-full p-4 bg-[#F2F2F7] text-[#86868B] rounded-2xl font-bold active:scale-95 transition-all mt-2">取消</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========================================
+        // IndexedDB 数据库模块
+        // ========================================
+        
+        const DB_NAME = 'ToDoDB';
+        const DB_VERSION = 1;
+        let db = null;
+
+        // 初始化数据库
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                // 数据库创建或版本升级时触发
+                request.onupgradeneeded = (event) => {
+                    const database = event.target.result;
+                    
+                    // 创建任务存储仓库
+                    if (!database.objectStoreNames.contains('tasks')) {
+                        const taskStore = database.createObjectStore('tasks', { keyPath: 'id' });
+                        // 创建索引，支持高效查询
+                        taskStore.createIndex('timeEpoch', 'timeEpoch', { unique: false });
+                        taskStore.createIndex('category', 'category', { unique: false });
+                        taskStore.createIndex('completed', 'completed', { unique: false });
+                    }
+                    
+                    // 创建设置存储仓库
+                    if (!database.objectStoreNames.contains('settings')) {
+                        database.createObjectStore('settings', { keyPath: 'key' });
+                    }
+                };
+                
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    console.log('IndexedDB 初始化成功');
+                    resolve(db);
+                };
+                
+                request.onerror = (event) => {
+                    console.error('IndexedDB 初始化失败:', event.target.error);
+                    reject(event.target.error);
+                };
+            });
+        }
+
+        // 通用事务操作封装
+        function dbTransaction(storeName, mode, callback) {
+            return new Promise((resolve, reject) => {
+                if (!db) {
+                    reject(new Error('数据库未初始化'));
+                    return;
+                }
+                
+                try {
+                    const tx = db.transaction(storeName, mode);
+                    const store = tx.objectStore(storeName);
+                    const request = callback(store);
+                    
+                    request.onsuccess = () => resolve(request.result);
+                    request.onerror = () => reject(request.error);
+                } catch (error) {
+                    reject(error);
+                }
+            });
+        }
+
+        // 获取所有任务
+        async function getAllTasks() {
+            return dbTransaction('tasks', 'readonly', store => store.getAll());
+        }
+
+        // 批量保存任务（覆盖式）
+        async function saveAllTasks(taskList) {
+            return new Promise((resolve, reject) => {
+                if (!db) {
+                    reject(new Error('数据库未初始化'));
+                    return;
+                }
+                
+                const tx = db.transaction('tasks', 'readwrite');
+                const store = tx.objectStore('tasks');
+                
+                // 先清空再写入
+                store.clear();
+                
+                taskList.forEach(task => {
+                    store.put(task);
+                });
+                
+                tx.oncomplete = () => resolve();
+                tx.onerror = () => reject(tx.error);
+            });
+        }
+
+        // 保存单个任务
+        async function saveTask(task) {
+            return dbTransaction('tasks', 'readwrite', store => store.put(task));
+        }
+
+        // 删除单个任务
+        async function deleteTaskFromDB(id) {
+            return dbTransaction('tasks', 'readwrite', store => store.delete(id));
+        }
+
+        // 获取设置项
+        async function getSetting(key, defaultValue = null) {
+            try {
+                const result = await dbTransaction('settings', 'readonly', store => store.get(key));
+                return result ? result.value : defaultValue;
+            } catch {
+                return defaultValue;
+            }
+        }
+
+        // 保存设置项
+        async function saveSetting(key, value) {
+            return dbTransaction('settings', 'readwrite', store => store.put({ key, value }));
+        }
+
+        // 从 localStorage 迁移数据到 IndexedDB
+        async function migrateFromLocalStorage() {
+            const migrationFlag = 'indexeddb_migrated';
+            const alreadyMigrated = localStorage.getItem(migrationFlag);
+            
+            if (alreadyMigrated) {
+                console.log('数据已迁移，跳过');
+                return;
+            }
+            
+            // 检查 localStorage 中是否有旧数据
+            const oldTasks = localStorage.getItem('do_tasks');
+            const oldActiveTab = localStorage.getItem('do_active_tab');
+            const oldSortOrders = localStorage.getItem('do_sort_orders');
+            const oldScrollPositions = localStorage.getItem('do_scroll_positions');
+            
+            if (oldTasks) {
+                try {
+                    const tasks = JSON.parse(oldTasks);
+                    if (Array.isArray(tasks) && tasks.length > 0) {
+                        await saveAllTasks(tasks);
+                        console.log(`已迁移 ${tasks.length} 条任务到 IndexedDB`);
+                    }
+                } catch (e) {
+                    console.error('迁移任务失败:', e);
+                }
+            }
+            
+            // 迁移设置
+            if (oldActiveTab) {
+                await saveSetting('active_tab', oldActiveTab);
+            }
+            if (oldSortOrders) {
+                await saveSetting('sort_orders', JSON.parse(oldSortOrders));
+            }
+            if (oldScrollPositions) {
+                await saveSetting('scroll_positions', oldScrollPositions);
+            }
+            
+            // 标记迁移完成
+            localStorage.setItem(migrationFlag, 'true');
+            console.log('数据迁移完成');
+        }
+
+        // ========================================
+        // 应用状态
+        // ========================================
+        
+        let tasks = [];
+        let activeTab = 'do';
+        let sortOrders = { do: 'desc', todo: 'asc' };
+        let scrollPositions = { do: 0, todo: 0 };
+        let overlayStack = [];
+
+        // ========================================
+        // 状态持久化（使用 IndexedDB）
+        // ========================================
+        
+        async function loadState() {
+            try {
+                // 加载任务
+                const loadedTasks = await getAllTasks();
+                tasks = (loadedTasks || []).map(t => {
+                    if (!t || typeof t !== 'object') return t;
+                    const timeEpoch = t.timeEpoch ?? parseTaskTimeToEpoch(t.time);
+                    if (timeEpoch == null) return t;
+                    return { ...t, timeEpoch };
+                });
+                
+                // 加载设置
+                activeTab = await getSetting('active_tab', 'do');
+                
+                const savedSortOrders = await getSetting('sort_orders');
+                sortOrders = savedSortOrders ? JSON.parse(savedSortOrders) : { do: 'desc', todo: 'asc' };
+                
+                const savedScrollPositions = await getSetting('scroll_positions');
+                scrollPositions = savedScrollPositions ? JSON.parse(savedScrollPositions) : { do: 0, todo: 0 };
+                
+                console.log('状态加载完成');
+            } catch (e) {
+                console.error('加载状态失败:', e);
+            }
+        }
+
+        async function saveState() {
+            try {
+                // 保存当前标签的滚动位置
+                const currentContent = document.getElementById(`view-${activeTab}`);
+                if (currentContent) {
+                    scrollPositions[activeTab] = currentContent.scrollTop;
+                }
+                
+                // 保存到 IndexedDB
+                await saveAllTasks(tasks);
+                await saveSetting('active_tab', activeTab);
+                await saveSetting('sort_orders', JSON.stringify(sortOrders));
+                await saveSetting('scroll_positions', JSON.stringify(scrollPositions));
+            } catch (e) {
+                console.error('保存状态失败:', e);
+            }
+        }
+
+        // ========================================
+        // 工具函数
+        // ========================================
+
+        // 防抖函数：延迟执行，多次触发只执行最后一次
+        function debounce(func, wait = 300) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func.apply(this, args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // 节流函数：固定时间间隔内只执行一次
+        function throttle(func, limit = 100) {
+            let inThrottle;
+            return function executedFunction(...args) {
+                if (!inThrottle) {
+                    func.apply(this, args);
+                    inThrottle = true;
+                    setTimeout(() => inThrottle = false, limit);
+                }
+            };
+        }
+
+        function pushOverlay(id) {
+            if (overlayStack[overlayStack.length - 1] === id) return;
+            overlayStack.push(id);
+            history.pushState({ overlay: id }, '');
+        }
+
+        function hideAddModalInternal() {
+            document.getElementById('addModal').style.display = 'none';
+            document.body.style.overflow = '';
+            document.getElementById('taskInput').value = '';
+            editingTaskId = null;
+            currentTaskImages = [];
+        }
+
+        function requestCloseAddModal() {
+            // 自动保存：如果有内容或图片变化，自动保存
+            autoSaveAndClose();
+        }
+
+        // 自动保存并关闭模态框
+        function autoSaveAndClose() {
+            const input = document.getElementById('taskInput');
+            const timeInput = document.getElementById('taskTimeInput');
+            const text = input.value.trim();
+            const customTime = timeInput.value.trim() || getFormattedTime();
+            const { epoch, normalized } = normalizeTimeString(customTime);
+            
+            // 如果有内容或图片，则保存
+            if (text || currentTaskImages.length > 0) {
+                if (editingTaskId) {
+                    // 编辑模式：更新任务
+                    const task = tasks.find(t => t.id === editingTaskId);
+                    if (task) {
+                        task.text = text;
+                        task.time = normalized;
+                        task.timeEpoch = epoch;
+                        task.images = [...currentTaskImages];
+                        delete task.image;
+                    }
+                } else {
+                    // 新增模式：创建任务
+                    tasks.unshift({
+                        id: Date.now(),
+                        text: text,
+                        completed: currentModalTarget === 'do',
+                        time: normalized,
+                        timeEpoch: epoch,
+                        category: currentModalTarget,
+                        images: [...currentTaskImages]
+                    });
+                }
+                
+                input.value = '';
+                timeInput.value = '';
+                currentTaskImages = [];
+                editingTaskId = null;
+                
+                hideAddModalInternal();
+                saveState();
+                renderTasks();
+            } else {
+                // 没有内容，直接关闭
+                hideAddModalInternal();
+            }
+        }
+
+        function hideAddModal() { requestCloseAddModal(); }
+
+        function hideDeleteModalInternal() {
+            const modal = document.getElementById('deleteModal');
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                taskToDelete = null;
+                document.body.style.overflow = '';
+            }, 300);
+        }
+
+        function requestCloseDeleteModal() {
+            if (overlayStack[overlayStack.length - 1] === 'deleteModal') {
+                history.back();
+                return;
+            }
+            hideDeleteModalInternal();
+        }
+
+        function closeImageViewerInternal() {
+            const viewer = document.getElementById('imageViewer');
+            viewer.classList.remove('active');
+            setTimeout(() => {
+                viewer.style.display = 'none';
+                document.body.style.overflow = '';
+            }, 300);
+        }
+
+        function requestCloseImageViewer() {
+            if (overlayStack[overlayStack.length - 1] === 'imageViewer') {
+                history.back();
+                return;
+            }
+            closeImageViewerInternal();
+        }
+
+        function getFormattedTime() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const date = String(now.getDate()).padStart(2, '0');
+            const dayNames = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+            const dayName = dayNames[now.getDay()];
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            return `${year}/${month}/${date}${dayName}${hours}:${minutes}`;
+        }
+
+        function parseTaskTimeToEpoch(timeStr) {
+            if (!timeStr || typeof timeStr !== 'string') return null;
+            const m = timeStr.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})(?:星期[一二三四五六日])?(?:(\d{1,2}):(\d{2}))?/);
+            if (!m) return null;
+            const year = Number(m[1]);
+            const month = Number(m[2]);
+            const day = Number(m[3]);
+            const hour = m[4] ? Number(m[4]) : 0;
+            const minute = m[5] ? Number(m[5]) : 0;
+            const d = new Date(year, month - 1, day, hour, minute, 0, 0);
+            if (Number.isNaN(d.getTime())) return null;
+            if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) return null;
+            return d.getTime();
+        }
+
+        function formatEpochToTimeString(epoch) {
+            const d = new Date(epoch);
+            if (Number.isNaN(d.getTime())) return null;
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const date = String(d.getDate()).padStart(2, '0');
+            const dayNames = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+            const dayName = dayNames[d.getDay()];
+            const hours = String(d.getHours()).padStart(2, '0');
+            const minutes = String(d.getMinutes()).padStart(2, '0');
+            return `${year}/${month}/${date}${dayName}${hours}:${minutes}`;
+        }
+
+        function normalizeTimeString(timeStr) {
+            const epoch = parseTaskTimeToEpoch(timeStr);
+            if (epoch == null) return { epoch: null, normalized: timeStr };
+            const normalized = formatEpochToTimeString(epoch);
+            return { epoch, normalized: normalized || timeStr };
+        }
+
+        function autoUpdateWeekday(el) {
+            const val = el.value;
+            const dateMatch = val.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})/);
+            if (dateMatch) {
+                const dateStr = `${dateMatch[1]}/${dateMatch[2]}/${dateMatch[3]}`;
+                const year = Number(dateMatch[1]);
+                const month = Number(dateMatch[2]);
+                const day = Number(dateMatch[3]);
+                const d = new Date(year, month - 1, day);
+                if (!isNaN(d.getTime())) {
+                    const dayNames = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+                    const newDay = dayNames[d.getDay()];
+                    
+                    let newVal = val;
+                    const weekMatch = val.match(/星期[一二三四五六日]/);
+                    
+                    if (weekMatch) {
+                        newVal = val.replace(/星期[一二三四五六日]/, newDay);
+                    } else {
+                        const dateEndPos = dateMatch[0].length;
+                        const timeMatch = val.slice(dateEndPos).match(/\s*(\d{1,2}):(\d{2})/);
+                        if (timeMatch) {
+                            newVal = dateStr + newDay + timeMatch[0].trim();
+                        } else {
+                            newVal = dateStr + newDay;
+                        }
+                    }
+                    
+                    newVal = newVal.replace(/\s+/g, '');
+
+                    if (newVal !== val) {
+                        const start = el.selectionStart;
+                        const end = el.selectionEnd;
+                        el.value = newVal;
+                        const newStart = Math.min(start, newVal.length);
+                        const newEnd = Math.min(end, newVal.length);
+                        el.setSelectionRange(newStart, newEnd);
+                    }
+                }
+            }
+        }
+
+        // 防抖版日期自动更新
+        const debouncedAutoUpdateWeekday = debounce(autoUpdateWeekday, 150);
+
+        // ========================================
+        // 界面逻辑
+        // ========================================
+
+        function switchTab(tab) {
+            saveScrollPosition();
+            
+            // 切换 Tab 时显示对应的 header
+            document.querySelectorAll('.app-header').forEach(h => h.classList.add('hidden'));
+            document.getElementById(`header-${tab}`).classList.remove('hidden');
+            document.querySelector('.bottom-nav').classList.remove('hidden');
+            isScrolling = false;
+            
+            if (activeTab === tab) {
+                sortOrders[tab] = sortOrders[tab] === 'desc' ? 'asc' : 'desc';
+                
+                let targetTasks, otherTasks;
+                if (tab === 'todo') {
+                    targetTasks = tasks.filter(t => t.category === 'todo' && !t.completed);
+                    otherTasks = tasks.filter(t => !(t.category === 'todo' && !t.completed));
+                } else {
+                    targetTasks = tasks.filter(t => t.category === 'do' || (t.category === 'todo' && t.completed));
+                    otherTasks = tasks.filter(t => !(t.category === 'do' || (t.category === 'todo' && t.completed)));
+                }
+                
+                targetTasks = sortTasks([...targetTasks], sortOrders[tab]);
+                tasks = [...targetTasks, ...otherTasks];
+            }
+            
+            activeTab = tab;
+            saveState(); 
+            
+            document.querySelectorAll('.app-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            
+            const targetView = document.getElementById(`view-${tab}`);
+            if (targetView) targetView.classList.remove('hidden');
+            
+            const targetNav = document.getElementById(`nav-${tab}`);
+            if (targetNav) targetNav.classList.add('active');
+            
+            renderTasks();
+            
+            setTimeout(() => {
+                if (targetView) {
+                    targetView.scrollTop = scrollPositions[tab] || 0;
+                }
+            }, 150);
+        }
+
+        function sortTasks(taskList, order) {
+            return taskList.sort((a, b) => {
+                const aEpoch = (a && typeof a === 'object' && a.timeEpoch != null) ? a.timeEpoch : parseTaskTimeToEpoch(a?.time);
+                const bEpoch = (b && typeof b === 'object' && b.timeEpoch != null) ? b.timeEpoch : parseTaskTimeToEpoch(b?.time);
+                if (aEpoch == null && bEpoch == null) return 0;
+                if (aEpoch == null) return 1;
+                if (bEpoch == null) return -1;
+                return order === 'desc' ? (bEpoch - aEpoch) : (aEpoch - bEpoch);
+            });
+        }
+
+        function renderTasks() {
+            const todoList = document.getElementById('todo-list');
+            const doneList = document.getElementById('done-list');
+            if (todoList) todoList.innerHTML = '';
+            if (doneList) doneList.innerHTML = '';
+
+            if (activeTab === 'todo') {
+                let todoActive = tasks.filter(t => t.category === 'todo' && !t.completed);
+                let todoCompleted = tasks.filter(t => t.category === 'todo' && t.completed);
+                
+                if (todoActive.length === 0 && todoCompleted.length === 0) {
+                    todoList.innerHTML = `<div class="empty-state"><i class="fas fa-edit"></i><span>规划今日待办</span></div>`;
+                } else {
+                    const sortedActive = sortTasks([...todoActive], sortOrders.todo);
+                    const sortedCompleted = sortTasks([...todoCompleted], sortOrders.todo);
+
+                    const activeContainer = document.createElement('div');
+                    activeContainer.id = 'todo-active-group';
+                    sortedActive.forEach(task => activeContainer.appendChild(createTaskCard(task, false, false)));
+                    todoList.appendChild(activeContainer);
+
+                    if (todoCompleted.length > 0) {
+                        const sep = document.createElement('div');
+                        sep.className = 'finished-separator'; sep.innerHTML = '<span>已做完</span>';
+                        todoList.appendChild(sep);
+
+                        const completedContainer = document.createElement('div');
+                        completedContainer.id = 'todo-completed-group';
+                        sortedCompleted.forEach(task => completedContainer.appendChild(createTaskCard(task, false, true)));
+                        todoList.appendChild(completedContainer);
+                    }
+                    
+                    initSortable('todo-active-group');
+                    initSortable('todo-completed-group');
+                }
+            } else {
+                let doTasks = tasks.filter(t => t.category === 'do' || (t.category === 'todo' && t.completed));
+
+                if (doTasks.length === 0) {
+                    doneList.innerHTML = `<div class="empty-state"><i class="fas fa-medal"></i><span>记录今日成就</span></div>`;
+                } else {
+                    const doContainer = document.createElement('div');
+                    doContainer.id = 'do-group';
+                    
+                    const sortedDoTasks = sortTasks([...doTasks], sortOrders.do);
+                    
+                    sortedDoTasks.forEach(task => doContainer.appendChild(createTaskCard(task, true, false)));
+                    doneList.appendChild(doContainer);
+                    initSortable('do-group');
+                }
+            }
+            
+            // 渲染完成后触发懒加载
+            observeLazyImages();
+        }
+
+        let sortableInstances = {};
+        function initSortable(id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            
+            if (sortableInstances[id]) sortableInstances[id].destroy();
+
+            sortableInstances[id] = new Sortable(el, {
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                dragClass: 'dragging',
+                delay: 500,
+                delayOnTouchOnly: true,
+                touchStartThreshold: 10,
+                onStart: function(evt) {
+                    evt.item.setAttribute('data-sorting', 'true');
+                    if (window.navigator.vibrate) window.navigator.vibrate(50);
+                },
+                onEnd: function(evt) {
+                    evt.item.removeAttribute('data-sorting');
+                    updateTasksOrderFromDOM();
+                }
+            });
+        }
+
+        function createTaskCard(task, isInDoView = false, forceGrey = false) {
+            const card = document.createElement('div');
+            const isGrey = forceGrey && task.completed;
+            
+            let cardClass = 'todo';
+            if (isInDoView || task.category === 'do') cardClass = 'do-item';
+            if (isGrey) cardClass = 'done-grey';
+            
+            card.className = `task-card`;
+            card.setAttribute('data-id', task.id);
+            
+            let displayTime = task.time || getFormattedTime();
+
+            const isChecked = isInDoView || task.completed;
+            const checkboxColor = (isInDoView || task.category === 'do') ? 'bg-[#25C78B] border-[#25C78B]' : 'bg-[#0062FF] border-[#0062FF]';
+            const checkboxHTML = `
+                <div onclick="event.stopPropagation(); toggleTask(${task.id}, ${isInDoView})" style="flex-shrink: 0;" class="w-8 h-8 rounded-full border-2 ${isChecked ? checkboxColor : 'border-gray-200'} flex items-center justify-center cursor-pointer transition-all active:scale-90">
+                    ${isChecked ? '<i class="fas fa-check text-white text-xs"></i>' : ''}
+                </div>
+            `;
+
+            const imagesToShow = (task.images || (task.image ? [task.image] : [])).slice(0, 3);
+            const hasMoreImages = (task.images || (task.image ? [task.image] : [])).length > 3;
+
+            card.innerHTML = `
+                <div class="swipe-bg">
+                    <i class="fas fa-trash-alt"></i>
+                </div>
+                <div class="task-card-content ${cardClass}">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-4 flex-1" style="min-width: 0;">
+                            ${checkboxHTML}
+                            <div class="flex-1 select-none active:opacity-70 transition-opacity" 
+                                 style="min-width: 0; padding: 8px 0;" 
+                                 onclick="event.stopPropagation(); showEditModal(${task.id})">
+                                <div class="task-text font-bold text-[#1D1D1F] leading-tight pointer-events-none">${task.text}</div>
+                                <div class="text-xs text-[#86868B] mt-1.5 font-medium flex items-center pointer-events-none">
+                                    <i class="far fa-clock mr-1"></i>${displayTime}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center">
+                            <div class="task-images-container">
+                                ${imagesToShow.map(img => `
+                                    <img data-src="${img}" class="task-card-img lazy-loading" onclick="event.stopPropagation(); openImageViewer('${img}')" alt="">
+                                `).join('')}
+                                ${hasMoreImages ? `<div class="task-card-img flex items-center justify-center bg-gray-100 text-xs text-gray-500">+${(task.images || (task.image ? [task.image] : [])).length - 3}</div>` : ''}
+                            </div>
+                            <button onclick="event.stopPropagation(); deleteTask(${task.id})" class="w-10 h-10 flex items-center justify-center text-[#C7C7CC] active:text-[#FF4D4F] transition-colors">
+                                <i class="fas fa-trash-alt text-lg"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            const content = card.querySelector('.task-card-content');
+            const bg = card.querySelector('.swipe-bg');
+            let startX = 0;
+            let startY = 0;
+            let currentX = 0;
+            let isSwiping = false;
+            let directionLocked = false;
+
+            content.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                startY = e.touches[0].clientY;
+                directionLocked = false;
+                currentX = 0;
+                content.classList.add('no-transition');
+            }, { passive: true });
+
+            content.addEventListener('touchmove', (e) => {
+                if (card.getAttribute('data-sorting') === 'true') return;
+
+                const x = e.touches[0].clientX;
+                const y = e.touches[0].clientY;
+                const diffX = x - startX;
+                const diffY = y - startY;
+
+                if (!directionLocked) {
+                    if (Math.abs(diffX) > 10 || Math.abs(diffY) > 10) {
+                        if (Math.abs(diffX) > Math.abs(diffY) && diffX > 0) {
+                            isSwiping = true;
+                        } else {
+                            isSwiping = false;
+                        }
+                        directionLocked = true;
+                    }
+                }
+
+                if (isSwiping) {
+                    if (e.cancelable) e.preventDefault();
+                    
+                    currentX = diffX;
+                    const maxSwipe = window.innerWidth * 0.6;
+                    const resistance = 0.8;
+                    const finalX = Math.min(currentX * resistance, maxSwipe);
+                    
+                    if (finalX > 0) {
+                        content.style.transform = `translateX(${finalX}px)`;
+                        bg.style.opacity = Math.min(finalX / 80, 1);
+                    }
+                }
+            }, { passive: false });
+
+            content.addEventListener('touchend', () => {
+                content.classList.remove('no-transition');
+                const threshold = window.innerWidth * 0.35;
+
+                if (isSwiping && currentX > threshold) {
+                    deleteTask(task.id);
+                }
+                
+                content.style.transform = '';
+                bg.style.opacity = '';
+                isSwiping = false;
+                directionLocked = false;
+            });
+
+            return card;
+        }
+
+        function updateTasksOrderFromDOM() {
+            const allVisibleCards = [...document.querySelectorAll('.task-card')];
+            const newOrderIds = allVisibleCards.map(el => parseInt(el.getAttribute('data-id')));
+            
+            if (newOrderIds.length === 0) return;
+
+            const taskMap = new Map(tasks.map(t => [t.id, t]));
+            
+            const reorderedVisibleTasks = newOrderIds.map(id => taskMap.get(id)).filter(t => t);
+            
+            const visibleIdsSet = new Set(newOrderIds);
+            const otherTasks = tasks.filter(t => !visibleIdsSet.has(t.id));
+            
+            tasks = [...reorderedVisibleTasks, ...otherTasks];
+            saveState();
+        }
+
+        // ========================================
+        // 任务操作
+        // ========================================
+        
+        let currentModalTarget = 'todo';
+        let editingTaskId = null;
+        let currentTaskImages = [];
+
+        function handleImageUpload(input) {
+            const files = Array.from(input.files);
+            if (files.length > 0) {
+                files.forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        compressImage(e.target.result, 80, 1024, function(compressedDataUrl) {
+                            currentTaskImages.push(compressedDataUrl);
+                            renderImagePreviews();
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                });
+                input.value = '';
+            }
+        }
+        
+        function compressImage(dataUrl, quality, maxWidth, callback) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+                
+                if (width > maxWidth) {
+                    height = height * (maxWidth / width);
+                    width = maxWidth;
+                }
+                
+                canvas.width = width;
+                canvas.height = height;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                
+                const compressedDataUrl = canvas.toDataURL('image/jpeg', quality / 100);
+                callback(compressedDataUrl);
+            };
+            img.src = dataUrl;
+        }
+
+        function renderImagePreviews() {
+            const container = document.getElementById('imagePreviewContainer');
+            container.innerHTML = '';
+            
+            if (currentTaskImages.length > 0) {
+                container.style.display = 'flex';
+                currentTaskImages.forEach((base64, index) => {
+                    const preview = document.createElement('div');
+                    preview.className = 'modal-image-preview';
+                    preview.onclick = () => openImageViewer(base64);
+                    preview.innerHTML = `
+                        <img src="${base64}" alt="">
+                        <div class="remove-img-btn" onclick="event.stopPropagation(); removeImage(${index})">
+                            <i class="fas fa-times"></i>
+                        </div>
+                    `;
+                    container.appendChild(preview);
+                });
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        function removeImage(index) {
+            currentTaskImages.splice(index, 1);
+            renderImagePreviews();
+        }
+
+        function showAddModal(target = 'todo') {
+            editingTaskId = null;
+            currentModalTarget = target;
+            currentTaskImages = [];
+            renderImagePreviews();
+
+            document.getElementById('addModal').style.display = 'flex';
+            pushOverlay('addModal');
+            
+            const confirmBtn = document.getElementById('confirmBtn');
+            confirmBtn.style.backgroundColor = target === 'do' ? 'var(--coloros-success)' : 'var(--coloros-primary)';
+            
+            const input = document.getElementById('taskInput');
+            const timeInput = document.getElementById('taskTimeInput');
+            input.value = '';
+            timeInput.value = getFormattedTime(); 
+            
+            setTimeout(() => input.focus(), 300);
+            document.getElementById('modalTitle').innerText = target === 'do' ? '记录成就' : '添加待办';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function showEditModal(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+
+            editingTaskId = id;
+            currentModalTarget = task.category;
+            
+            if (task.image && !task.images) {
+                currentTaskImages = [task.image];
+            } else {
+                currentTaskImages = task.images ? [...task.images] : [];
+            }
+
+            renderImagePreviews();
+
+            document.getElementById('addModal').style.display = 'flex';
+            pushOverlay('addModal');
+            
+            const confirmBtn = document.getElementById('confirmBtn');
+            confirmBtn.style.backgroundColor = task.category === 'do' ? 'var(--coloros-success)' : 'var(--coloros-primary)';
+            
+            const input = document.getElementById('taskInput');
+            const timeInput = document.getElementById('taskTimeInput');
+            input.value = task.text;
+            timeInput.value = task.time || getFormattedTime();
+            
+            setTimeout(() => {
+                input.focus();
+                input.setSelectionRange(input.value.length, input.value.length);
+                input.scrollTop = input.scrollHeight;
+            }, 300);
+            document.getElementById('modalTitle').innerText = '编辑事项';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function hideAddModal() { requestCloseAddModal(); }
+
+        function addTask() {
+            const input = document.getElementById('taskInput');
+            const timeInput = document.getElementById('taskTimeInput');
+            const text = input.value.trim();
+            const customTime = timeInput.value.trim() || getFormattedTime();
+            const { epoch, normalized } = normalizeTimeString(customTime);
+            
+            if (text) {
+                if (editingTaskId) {
+                    const task = tasks.find(t => t.id === editingTaskId);
+                    if (task) {
+                        task.text = text;
+                        task.time = normalized;
+                        task.timeEpoch = epoch;
+                        task.images = [...currentTaskImages];
+                        delete task.image;
+                    }
+                } else {
+                    tasks.unshift({
+                        id: Date.now(),
+                        text: text,
+                        completed: currentModalTarget === 'do',
+                        time: normalized,
+                        timeEpoch: epoch,
+                        category: currentModalTarget,
+                        images: [...currentTaskImages]
+                    });
+                }
+                input.value = '';
+                requestCloseAddModal();
+                saveState();
+                renderTasks();
+            }
+        }
+
+        function toggleTask(id, isInDoView = false) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+
+            if (isInDoView) {
+                task.completed = false;
+                task.category = 'todo';
+            } else {
+                task.completed = !task.completed;
+                if (task.completed) {
+                    task.time = getFormattedTime();
+                    task.timeEpoch = parseTaskTimeToEpoch(task.time);
+                }
+            }
+            saveState();
+            renderTasks();
+        }
+
+        let taskToDelete = null;
+        function deleteTask(id) {
+            taskToDelete = id;
+            const modal = document.getElementById('deleteModal');
+            modal.style.display = 'flex';
+            pushOverlay('deleteModal');
+            setTimeout(() => modal.classList.add('active'), 10);
+            document.body.style.overflow = 'hidden';
+
+            document.getElementById('confirmDeleteBtn').onclick = () => {
+                if (taskToDelete) {
+                    tasks = tasks.filter(t => t.id !== taskToDelete);
+                    saveState();
+                    renderTasks();
+                    requestCloseDeleteModal();
+                }
+            };
+        }
+
+        function hideDeleteModal() { requestCloseDeleteModal(); }
+
+        function openImageViewer(src) {
+            const viewer = document.getElementById('imageViewer');
+            const fullImg = document.getElementById('fullImage');
+            fullImg.src = src;
+            viewer.style.display = 'flex';
+            pushOverlay('imageViewer');
+            setTimeout(() => viewer.classList.add('active'), 10);
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeImageViewer() { requestCloseImageViewer(); }
+
+        // ========================================
+        // 导入导出功能
+        // ========================================
+
+        function showImportExportModal() {
+            const modal = document.getElementById('importExportModal');
+            modal.style.display = 'flex';
+            pushOverlay('importExportModal');
+            setTimeout(() => modal.classList.add('active'), 10);
+            document.body.style.overflow = 'hidden';
+            updateImportExportStats();
+            loadScrollHideSetting();
+        }
+
+        // 加载导航栏滚动隐藏设置
+        async function loadScrollHideSetting() {
+            const enabled = await getSetting('scroll_hide_enabled', true);
+            const toggle = document.getElementById('scrollHideToggle');
+            if (toggle) {
+                toggle.checked = enabled;
+            }
+        }
+
+        // 切换导航栏滚动隐藏
+        async function toggleScrollHide(enabled) {
+            await saveSetting('scroll_hide_enabled', enabled);
+            scrollHideEnabled = enabled;
+            
+            // 如果关闭，确保导航栏显示
+            if (!enabled) {
+                const currentHeader = document.getElementById(`header-${activeTab}`);
+                const nav = document.querySelector('.bottom-nav');
+                if (currentHeader) currentHeader.classList.remove('hidden');
+                if (nav) nav.classList.remove('hidden');
+            }
+        }
+
+        function hideImportExportModalInternal() {
+            const modal = document.getElementById('importExportModal');
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }, 300);
+        }
+
+        function requestCloseImportExportModal() {
+            if (overlayStack[overlayStack.length - 1] === 'importExportModal') {
+                history.back();
+                return;
+            }
+            hideImportExportModalInternal();
+        }
+
+        function updateImportExportStats() {
+            const todoCount = tasks.filter(t => t.category === 'todo' && !t.completed).length;
+            const doCount = tasks.filter(t => t.category === 'do' || (t.category === 'todo' && t.completed)).length;
+            const imageCount = tasks.reduce((sum, t) => {
+                const imgs = t.images || (t.image ? [t.image] : []);
+                return sum + imgs.length;
+            }, 0);
+
+            document.getElementById('statsTodoCount').textContent = todoCount;
+            document.getElementById('statsDoCount').textContent = doCount;
+            document.getElementById('statsImageCount').textContent = imageCount;
+        }
+
+        // 触发文件导入（兼容 WebView）
+        function triggerFileImport() {
+            const input = document.getElementById('importFileInput');
+            if (input) {
+                input.value = '';
+                input.click();
+            }
+        }
+
+        // 初始化导入功能
+        function initImportFeature() {
+            const importCard = document.getElementById('importCard');
+            const input = document.getElementById('importFileInput');
+            
+            if (importCard && input) {
+                // 点击卡片触发文件选择
+                importCard.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    input.value = '';
+                    input.click();
+                });
+                
+                // 文件选择变化时处理
+                input.addEventListener('change', function(e) {
+                    importData(this);
+                });
+            }
+        }
+
+        function exportData() {
+            const exportObj = {
+                version: '1.0',
+                exportTime: new Date().toISOString(),
+                tasks: tasks,
+                settings: {
+                    activeTab: activeTab,
+                    sortOrders: sortOrders
+                }
+            };
+
+            const dataStr = JSON.stringify(exportObj, null, 2);
+            const blob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+
+            const link = document.createElement('a');
+            link.href = url;
+            const now = new Date();
+            const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+            link.download = `ToDo_Backup_${dateStr}_${timeStr}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            showToast('数据已导出');
+        }
+
+        function importData(input) {
+            const file = input.files[0];
+            if (!file) {
+                console.log('未选择文件');
+                return;
+            }
+
+            console.log('选择的文件:', file.name, file.type, file.size);
+
+            const reader = new FileReader();
+            
+            reader.onerror = function(error) {
+                console.error('文件读取错误:', error);
+                showToast('文件读取失败');
+                input.value = '';
+            };
+            
+            reader.onload = async function(e) {
+                try {
+                    const content = e.target.result;
+                    console.log('文件内容长度:', content.length);
+                    
+                    const importObj = JSON.parse(content);
+
+                    if (!importObj.tasks || !Array.isArray(importObj.tasks)) {
+                        showToast('无效的数据文件');
+                        return;
+                    }
+
+                    pendingImportData = importObj;
+                    document.getElementById('importCount').textContent = importObj.tasks.length;
+                    showImportConfirmModal();
+
+                } catch (error) {
+                    console.error('导入失败:', error);
+                    showToast('导入失败，文件格式错误');
+                }
+            };
+            
+            reader.readAsText(file);
+        }
+
+        let pendingImportData = null;
+
+        function showImportConfirmModal() {
+            const modal = document.getElementById('importConfirmModal');
+            modal.style.display = 'flex';
+            pushOverlay('importConfirmModal');
+            setTimeout(() => modal.classList.add('active'), 10);
+            document.body.style.overflow = 'hidden';
+
+            // 覆盖导入
+            document.getElementById('overwriteImportBtn').onclick = async () => {
+                if (pendingImportData) {
+                    tasks = pendingImportData.tasks;
+                    
+                    if (pendingImportData.settings) {
+                        if (pendingImportData.settings.activeTab) activeTab = pendingImportData.settings.activeTab;
+                        if (pendingImportData.settings.sortOrders) sortOrders = pendingImportData.settings.sortOrders;
+                    }
+
+                    await saveState();
+                    renderTasks();
+                    updateImportExportStats();
+                    showToast(`已覆盖，共 ${tasks.length} 条数据`);
+                    pendingImportData = null;
+                    requestCloseImportConfirmModal();
+                    requestCloseImportExportModal();
+                }
+            };
+
+            // 添加导入（只添加不存在的）
+            document.getElementById('mergeImportBtn').onclick = async () => {
+                if (pendingImportData) {
+                    const existingIds = new Set(tasks.map(t => t.id));
+                    const newTasks = pendingImportData.tasks.filter(t => !existingIds.has(t.id));
+                    
+                    if (newTasks.length > 0) {
+                        tasks = [...tasks, ...newTasks];
+                        await saveState();
+                        renderTasks();
+                        updateImportExportStats();
+                        showToast(`新增 ${newTasks.length} 条数据`);
+                    } else {
+                        showToast('没有新数据需要添加');
+                    }
+                    
+                    pendingImportData = null;
+                    requestCloseImportConfirmModal();
+                    requestCloseImportExportModal();
+                }
+            };
+        }
+
+        function hideImportConfirmModalInternal() {
+            const modal = document.getElementById('importConfirmModal');
+            modal.classList.remove('active');
+            setTimeout(() => {
+                modal.style.display = 'none';
+                document.body.style.overflow = '';
+            }, 300);
+        }
+
+        function requestCloseImportConfirmModal() {
+            if (overlayStack[overlayStack.length - 1] === 'importConfirmModal') {
+                history.back();
+                return;
+            }
+            hideImportConfirmModalInternal();
+        }
+
+        function showToast(message) {
+            const existing = document.querySelector('.toast-message');
+            if (existing) existing.remove();
+
+            const toast = document.createElement('div');
+            toast.className = 'toast-message';
+            toast.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(0, 0, 0, 0.75);
+                color: white;
+                padding: 16px 32px;
+                border-radius: 16px;
+                font-size: 15px;
+                font-weight: 500;
+                z-index: 10000;
+                animation: toastFadeIn 0.3s ease;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.animation = 'toastFadeOut 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+
+        // ========================================
+        // 图片懒加载
+        // ========================================
+
+        let lazyLoadObserver = null;
+
+        // 初始化懒加载观察器
+        function initLazyLoad() {
+            if ('IntersectionObserver' in window) {
+                lazyLoadObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        if (entry.isIntersecting) {
+                            const img = entry.target;
+                            if (img.dataset.src) {
+                                img.src = img.dataset.src;
+                                img.onload = () => {
+                                    img.classList.remove('lazy-loading');
+                                    img.classList.add('lazy-loaded');
+                                };
+                                img.onerror = () => {
+                                    img.classList.remove('lazy-loading');
+                                    img.classList.add('lazy-error');
+                                };
+                                lazyLoadObserver.unobserve(img);
+                            }
+                        }
+                    });
+                }, {
+                    rootMargin: '50px 0px',
+                    threshold: 0.01
+                });
+            }
+        }
+
+        // 观察所有懒加载图片
+        function observeLazyImages() {
+            if (lazyLoadObserver) {
+                document.querySelectorAll('.task-card-img.lazy-loading[data-src]').forEach(img => {
+                    lazyLoadObserver.observe(img);
+                });
+            } else {
+                // 降级处理：直接加载所有图片
+                document.querySelectorAll('.task-card-img.lazy-loading[data-src]').forEach(img => {
+                    img.src = img.dataset.src;
+                    img.classList.remove('lazy-loading');
+                    img.classList.add('lazy-loaded');
+                });
+            }
+        }
+
+        // 双击检测
+        let lastTapTime = 0;
+        let tapTimeout = null;
+
+        function setupDoubleTap() {
+            const h1Elements = document.querySelectorAll('.app-header h1');
+            h1Elements.forEach(h1 => {
+                h1.addEventListener('click', (e) => {
+                    const currentTime = new Date().getTime();
+                    const tapLength = currentTime - lastTapTime;
+
+                    if (tapLength < 300 && tapLength > 0) {
+                        showImportExportModal();
+                        clearTimeout(tapTimeout);
+                    } else {
+                        tapTimeout = setTimeout(() => {
+                            // 单击不做任何操作
+                        }, 300);
+                    }
+                    lastTapTime = currentTime;
+                });
+            });
+        }
+
+        window.addEventListener('popstate', () => {
+            const id = overlayStack.pop();
+            if (!id) return;
+            if (id === 'imageViewer') closeImageViewerInternal();
+            if (id === 'deleteModal') hideDeleteModalInternal();
+            if (id === 'addModal') autoSaveAndClose();
+            if (id === 'importExportModal') hideImportExportModalInternal();
+            if (id === 'importConfirmModal') hideImportConfirmModalInternal();
+        });
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', () => {
+                const modal = document.getElementById('addModal');
+                if (modal.style.display === 'flex') {
+                    modal.style.height = window.visualViewport.height + 'px';
+                }
+            });
+        }
+
+        function saveScrollPosition() {
+            const currentContent = document.getElementById(`view-${activeTab}`);
+            if (currentContent) {
+                scrollPositions[activeTab] = currentContent.scrollTop;
+            }
+        }
+
+        // 节流版滚动位置保存
+        const throttledSaveScrollPosition = throttle(saveScrollPosition, 200);
+
+        // 滚动自动隐藏/显示导航栏
+        let scrollHideTimer = null;
+        let isScrolling = false;
+        let scrollHideEnabled = true;
+
+        function handleScrollHide() {
+            // 如果滚动隐藏功能被禁用，直接返回
+            if (!scrollHideEnabled) return;
+            
+            const currentHeader = document.getElementById(`header-${activeTab}`);
+            const nav = document.querySelector('.bottom-nav');
+            
+            if (!currentHeader) return;
+            
+            // 滚动时隐藏
+            if (!isScrolling) {
+                isScrolling = true;
+                currentHeader.classList.add('hidden');
+                nav.classList.add('hidden');
+            }
+            
+            // 清除之前的定时器
+            if (scrollHideTimer) {
+                clearTimeout(scrollHideTimer);
+            }
+            
+            // 停止滚动 400ms 后显示
+            scrollHideTimer = setTimeout(() => {
+                isScrolling = false;
+                currentHeader.classList.remove('hidden');
+                nav.classList.remove('hidden');
+            }, 400);
+        }
+
+        const throttledHandleScrollHide = throttle(handleScrollHide, 50);
+
+        window.addEventListener('beforeunload', saveScrollPosition);
+        
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                saveScrollPosition();
+            }
+        });
+
+        // 绑定滚动事件
+        function bindScrollEvents() {
+            document.querySelectorAll('.app-content').forEach(el => {
+                el.addEventListener('scroll', () => {
+                    throttledSaveScrollPosition();
+                    throttledHandleScrollHide();
+                }, { passive: true });
+            });
+        }
+
+        // ========================================
+        // 应用初始化
+        // ========================================
+        
+        async function initApp() {
+            try {
+                // 1. 初始化 IndexedDB
+                await initDB();
+                
+                // 2. 迁移旧数据（如果有）
+                await migrateFromLocalStorage();
+                
+                // 3. 加载状态
+                await loadState();
+                
+                // 3.5 加载滚动隐藏设置
+                scrollHideEnabled = await getSetting('scroll_hide_enabled', true);
+                
+                // 4. 隐藏加载动画
+                document.getElementById('loadingOverlay').classList.add('hidden');
+                
+                // 5. 初始化界面
+                switchTab(activeTab);
+                
+                // 6. 设置双击事件
+                setupDoubleTap();
+                
+                // 7. 初始化懒加载
+                initLazyLoad();
+                
+                // 8. 绑定滚动事件
+                bindScrollEvents();
+                
+                // 9. 初始化导入功能
+                initImportFeature();
+                
+                console.log('应用初始化完成');
+            } catch (error) {
+                console.error('应用初始化失败:', error);
+                document.getElementById('loadingOverlay').innerHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #FF4D4F; margin-bottom: 16px;"></i>
+                        <div style="color: #1D1D1F; font-weight: bold; margin-bottom: 8px;">初始化失败</div>
+                        <div style="color: #86868B; font-size: 14px;">请刷新页面重试</div>
+                    </div>
+                `;
+            }
+        }
+
+        // 启动应用
+        initApp();
+    </script>
+</body>
 </html>
