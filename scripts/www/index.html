@@ -1333,43 +1333,40 @@
             const customTime = timeInput.value.trim() || getFormattedTime();
             const { epoch, normalized } = normalizeTimeString(customTime);
             
-            // 如果有内容或图片，则保存
-            if (text || currentTaskImages.length > 0) {
-                if (editingTaskId) {
-                    // 编辑模式：更新任务
-                    const task = tasks.find(t => t.id === editingTaskId);
-                    if (task) {
-                        task.text = text;
-                        task.time = normalized;
-                        task.timeEpoch = epoch;
-                        task.images = [...currentTaskImages];
-                        delete task.image;
-                    }
-                } else {
-                    // 新增模式：创建任务
-                    tasks.unshift({
-                        id: Date.now(),
-                        text: text,
-                        completed: currentModalTarget === 'do',
-                        time: normalized,
-                        timeEpoch: epoch,
-                        category: currentModalTarget,
-                        images: [...currentTaskImages]
-                    });
-                }
-                
-                input.value = '';
-                timeInput.value = '';
-                currentTaskImages = [];
-                editingTaskId = null;
-                
+            if (!text) {
                 hideAddModalInternal();
-                saveState();
-                renderTasks();
-            } else {
-                // 没有内容，直接关闭
-                hideAddModalInternal();
+                return;
             }
+            
+            if (editingTaskId) {
+                const task = tasks.find(t => t.id === editingTaskId);
+                if (task) {
+                    task.text = text;
+                    task.time = normalized;
+                    task.timeEpoch = epoch;
+                    task.images = [...currentTaskImages];
+                    delete task.image;
+                }
+            } else {
+                tasks.unshift({
+                    id: Date.now(),
+                    text: text,
+                    completed: currentModalTarget === 'do',
+                    time: normalized,
+                    timeEpoch: epoch,
+                    category: currentModalTarget,
+                    images: [...currentTaskImages]
+                });
+            }
+            
+            input.value = '';
+            timeInput.value = '';
+            currentTaskImages = [];
+            editingTaskId = null;
+            
+            hideAddModalInternal();
+            saveState();
+            renderTasks();
         }
 
         function hideAddModal() { requestCloseAddModal(); }
@@ -1927,32 +1924,34 @@
             const customTime = timeInput.value.trim() || getFormattedTime();
             const { epoch, normalized } = normalizeTimeString(customTime);
             
-            if (text) {
-                if (editingTaskId) {
-                    const task = tasks.find(t => t.id === editingTaskId);
-                    if (task) {
-                        task.text = text;
-                        task.time = normalized;
-                        task.timeEpoch = epoch;
-                        task.images = [...currentTaskImages];
-                        delete task.image;
-                    }
-                } else {
-                    tasks.unshift({
-                        id: Date.now(),
-                        text: text,
-                        completed: currentModalTarget === 'do',
-                        time: normalized,
-                        timeEpoch: epoch,
-                        category: currentModalTarget,
-                        images: [...currentTaskImages]
-                    });
-                }
-                input.value = '';
-                requestCloseAddModal();
-                saveState();
-                renderTasks();
+            if (!text) {
+                return;
             }
+            
+            if (editingTaskId) {
+                const task = tasks.find(t => t.id === editingTaskId);
+                if (task) {
+                    task.text = text;
+                    task.time = normalized;
+                    task.timeEpoch = epoch;
+                    task.images = [...currentTaskImages];
+                    delete task.image;
+                }
+            } else {
+                tasks.unshift({
+                    id: Date.now(),
+                    text: text,
+                    completed: currentModalTarget === 'do',
+                    time: normalized,
+                    timeEpoch: epoch,
+                    category: currentModalTarget,
+                    images: [...currentTaskImages]
+                });
+            }
+            input.value = '';
+            hideAddModalInternal();
+            saveState();
+            renderTasks();
         }
 
         function toggleTask(id, isInDoView = false) {
