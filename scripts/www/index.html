@@ -284,15 +284,24 @@
         .modal-body {
             flex: 1;
             overflow-y: auto;
-            margin-bottom: 24px;
+            margin-bottom: 12px;
         }
         
         .modal-footer {
             position: sticky;
             bottom: 0;
             background: #FFFFFF;
-            padding-top: 16px;
+            padding-top: 8px;
             border-top: 1px solid rgba(0,0,0,0.05);
+        }
+        
+        .modal-footer .flex {
+            gap: 12px;
+        }
+        
+        .modal-footer .btn-cancel,
+        .modal-footer .btn-confirm {
+            padding: 10px 16px;
         }
 
         @keyframes colorosSheetUp {
@@ -301,8 +310,12 @@
         }
 
         .input-group {
-            margin-bottom: 24px;
+            margin-bottom: 20px;
             position: relative;
+        }
+        
+        .modal-body .input-group:first-child {
+            margin-top: 0;
         }
 
         .input-label {
@@ -331,7 +344,7 @@
             border: 2px solid #F2F2F7;
             background: #F7F7F9;
             transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            padding: 16px 18px;
+            padding: 12px 16px;
             border-radius: 18px;
             font-size: 17px;
             font-weight: 500;
@@ -343,7 +356,7 @@
 
         textarea {
             resize: none;
-            min-height: 120px;
+            min-height: 200px;
             line-height: 1.6;
         }
 
@@ -369,7 +382,7 @@
             height: 5px;
             background: #E5E5EA;
             border-radius: 10px;
-            margin: 0 auto 24px;
+            margin: 0 auto 16px;
         }
 
         .fab {
@@ -915,7 +928,7 @@
     <div id="addModal" onclick="if(event.target==this) requestCloseAddModal()">
         <div class="modal-content">
             <div class="modal-header-line"></div>
-            <div class="flex justify-between items-center mb-6">
+            <div class="flex justify-between items-center mb-3">
                 <h2 class="text-2xl font-bold" id="modalTitle">编辑事项</h2>
                 <label for="imageInput" class="image-upload-btn">
                     <i class="fas fa-image"></i>
